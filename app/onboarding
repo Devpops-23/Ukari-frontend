@@ -1,0 +1,70 @@
+"use client";
+
+import { useState } from "react";
+
+export default function OnboardingPage() {
+  const [loading, setLoading] = useState(false);
+
+  const startOnboarding = async () => {
+    setLoading(true);
+
+    // 1. Create Stripe Connect account
+    const res1 = await fetch("http://127.0.0.1:8000/stripe/create-connect-account", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        traveler_id: "123",
+        email: "traveler@example.com",
+      }),
+    });
+
+    const { account_id } = await res1.json();
+
+    // 2. Generate onboarding link
+    const res2 = await fetch("http://127.0.0.1:8000/stripe/onboarding-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ account_id }),
+    });
+
+    const { url } = await res2.json();
+
+    // 3. Redirect traveler to Stripe onboarding
+    window.location.href = url;
+  };
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Stripe Onboarding</h1>
+
+      <p className="mb-4 text-gray-700">
+        To receive earnings, you must complete Stripe verification.
+      </p>
+
+      <button
+        onClick={startOnboarding}
+        disabled={loading}
+        className="px-4 py-2 bg-blue-600 text-white rounded"
+      >
+        {loading ? "Redirecting..." : "Start Onboarding"}
+      </button>
+    </div>
+  );
+}
+export default function Complete() {
+  return (
+    <div className="p-6">
+      <h1 className="text-xl font-bold">Onboarding Complete</h1>
+      <p>You can now receive payouts.</p>
+    </div>
+  );
+}
+
+export default function Refresh() {
+  return (
+    <div className="p-6">
+      <h1 className="text-xl font-bold">Continue Onboarding</h1>
+      <p>Stripe needs more information. Please restart onboarding.</p>
+    </div>
+  );
+}
