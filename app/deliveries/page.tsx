@@ -1,69 +1,111 @@
-export default async function MyDeliveries() {
-  const token = "YOUR_TRAVELER_TOKEN"; // Replace with real token from auth
+"use client";
 
-  // Fetch deliveries
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API}/traveler/deliveries?token=${token}`,
-    { cache: "no-store" }
-  );
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-  if (!res.ok) {
+export default function DeliveriesPage() {
+  const router = useRouter();
+  const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Redirect if no token
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+    }
+  }, [router]);
+
+  // Fetch traveler deliveries
+  useEffect(() => {
+    async function loadDeliveries() {
+      try {
+        const token = localStorage.getItem("token");
+
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/traveler/deliveries`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const data = await res.json();
+        setDeliveries(data.deliveries || []);
+      } catch (err) {
+        console.error("Deliveries load error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDeliveries();
+  }, []);
+
+  if (loading) {
     return (
-      <div style={{ padding: 20 }}>
-        <h1>My Deliveries</h1>
-        <p>Failed to load deliveries.</p>
-      </div>
+      <main className="p-10">
+        <p className="text-gray-600 text-lg">Loading deliveries...</p>
+      </main>
     );
   }
 
-  const data = await res.json();
-  const deliveries = data.deliveries || [];
-
   return (
-    <div style={{ padding: 20 }}>
-      <h1>My Deliveries</h1>
+    <main className="p-10">
+      <h1 className="text-3xl font-bold text-gray-800 mb-8">
+        My Deliveries
+      </h1>
 
-      {deliveries.length === 0 && (
-        <p>You have no active deliveries right now.</p>
-      )}
-
-      {deliveries.map((order: any) => (
-        <div
-          key={order.order_id}
-          style={{
-            border: "1px solid #ccc",
-            padding: 16,
-            borderRadius: 8,
-            marginBottom: 16,
-          }}
-        >
-          <p><strong>Item:</strong> {order.item_name}</p>
-          <p><strong>Delivery To:</strong> {order.delivery_location}</p>
-          <p><strong>Status:</strong> {order.status}</p>
-
-          {order.delivery_deadline && (
-            <p><strong>Deadline:</strong> {new Date(order.delivery_deadline).toLocaleString()}</p>
-          )}
-
-          {/* Show Upload Proof button only if order is accepted or in-transit */}
-          {(order.status === "accepted" || order.status === "in_transit") && (
-            <a
-              href={`/traveler/deliveries/${order.order_id}/proof`}
-              style={{
-                display: "inline-block",
-                marginTop: 12,
-                padding: "10px 16px",
-                background: "black",
-                color: "white",
-                borderRadius: 6,
-                textDecoration: "none",
-              }}
+      {deliveries.length === 0 ? (
+        <p className="text-gray-600">You have no active deliveries.</p>
+      ) : (
+        <div className="space-y-4">
+          {deliveries.map((delivery) => (
+            <div
+              key={delivery.order_id}
+              className="bg-white p-6 rounded-xl shadow-md"
             >
-              Upload Delivery Proof
-            </a>
-          )}
+              <h3 className="text-xl font-semibold text-gray-700">
+                Order #{delivery.order_id}
+              </h3>
+
+              <p className="text-gray-600 mt-2">
+                Item: {delivery.item_name}
+              </p>
+
+              <p className="text-gray-600 mt-1">
+                Deliver To: {delivery.delivery_location}
+              </p>
+
+              <p className="text-gray-600 mt-1">
+                Status:{" "}
+                <span className="font-semibold text-emerald-600">
+                  {delivery.status}
+                </span>
+              </p>
+
+              {delivery.delivery_deadline && (
+                <p className="text-gray-600 mt-1">
+                  Deadline:{" "}
+                  {new Date(delivery.delivery_deadline).toLocaleString()}
+                </p>
+              )}
+
+              {(delivery.status === "accepted" ||
+                delivery.status === "in_transit") && (
+                <a
+                  href={`/deliveries/${delivery.order_id}/proof`}
+                  className="inline-block mt-4 bg-emerald-600 text-white px-4 py-2 rounded-lg"
+                >
+                  Upload Delivery Proof
+                </a>
+              )}
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      )}
+    </main>
   );
 }
+

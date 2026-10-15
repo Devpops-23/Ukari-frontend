@@ -1,124 +1,145 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-export default function AdminPayoutDashboard() {
-  const token = "YOUR_ADMIN_TOKEN"; // Replace with real admin token
-
-  const [payouts, setPayouts] = useState([]);
+export default function AdminPayoutsPage() {
+  const router = useRouter();
+  const [payouts, setPayouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<any | null>(null);
 
-  async function fetchPayouts() {
-    setLoading(true);
-
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API}/admin/payouts?token=${token}`
-    );
-
-    const data = await res.json();
-    setPayouts(data.payouts || []);
-    setLoading(false);
-  }
-
+  // Redirect if no token
   useEffect(() => {
-    fetchPayouts();
+    const token = localStorage.getItem("token");
+    if (!token) router.push("/login");
+  }, [router]);
+
+  // Fetch all payouts
+  useEffect(() => {
+    async function loadPayouts() {
+      try {
+        const token = localStorage.getItem("token");
+
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/admin/payouts`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const data = await res.json();
+        setPayouts(data.payouts || []);
+      } catch (err) {
+        console.error("Admin payouts load error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadPayouts();
   }, []);
 
-  async function adminAction(payoutId: number, action: "freeze" | "release") {
-    const endpoint =
-      action === "freeze"
-        ? `/admin/payouts/${payoutId}/freeze`
-        : `/admin/payouts/${payoutId}/release`;
-
-    await fetch(`${process.env.NEXT_PUBLIC_API}${endpoint}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-
-    fetchPayouts();
-  }
-
   if (loading) {
-    return <div style={{ padding: 20 }}>Loading payouts...</div>;
+    return (
+      <main className="p-10">
+        <p className="text-gray-600 text-lg">Loading payouts...</p>
+      </main>
+    );
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Admin Payout Dashboard</h1>
+    <main className="p-10">
+      <h1 className="text-3xl font-bold text-gray-800 mb-8">
+        Admin Payouts
+      </h1>
 
-      {payouts.length === 0 && <p>No payouts found.</p>}
+      {payouts.length === 0 ? (
+        <p className="text-gray-600">No payouts found.</p>
+      ) : (
+        <div className="space-y-6">
+          {payouts.map((p) => (
+            <div
+              key={p.payout_id}
+              className="bg-white p-6 rounded-xl shadow-md border border-gray-200"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-800">
+                    Payout #{p.payout_id}
+                  </h3>
+                  <p className="text-gray-600">
+                    Traveler: {p.traveler_name}
+                  </p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    Status: {p.status}
+                  </p>
+                  <p className="text-gray-500 text-sm">
+                    Stripe Transfer ID: {p.stripe_transfer_id || "—"}
+                  </p>
+                </div>
 
-      {payouts.map((p: any) => (
-        <div key={p.payout_id} style={card}>
-          <h3>Payout #{p.payout_id}</h3>
+                <p className="text-lg font-bold text-gray-800">
+                  ${Number(p.amount).toFixed(2)}
+                </p>
+              </div>
 
-          <p><strong>Traveler:</strong> {p.traveler_name}</p>
-          <p><strong>Traveler ID:</strong> {p.traveler_id}</p>
-
-          <p><strong>Amount:</strong> ${p.amount}</p>
-          <p><strong>Status:</strong> {p.status}</p>
-
-          {p.arrival_date && (
-            <p><strong>Arrival Date:</strong> {new Date(p.arrival_date).toLocaleString()}</p>
-          )}
-
-          {p.stripe_transfer_id && (
-            <p><strong>Stripe Transfer ID:</strong> {p.stripe_transfer_id}</p>
-          )}
-
-          {p.stripe_account_id && (
-            <p><strong>Stripe Account:</strong> {p.stripe_account_id}</p>
-          )}
-
-          <div style={{ marginTop: 20 }}>
-            {p.status !== "frozen" && (
               <button
-                style={buttonRed}
-                onClick={() => adminAction(p.payout_id, "freeze")}
+                onClick={() => setSelected(p)}
+                className="mt-4 bg-gray-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-900"
               >
-                Freeze Payout
+                View Details
               </button>
-            )}
+            </div>
+          ))}
+        </div>
+      )}
 
-            {p.status === "frozen" && (
-              <button
-                style={button}
-                onClick={() => adminAction(p.payout_id, "release")}
-              >
-                Release Payout
-              </button>
-            )}
+      {/* DETAILS MODAL */}
+      {selected && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-xl max-w-lg w-full">
+            <h2 className="text-xl font-semibold mb-4">Payout Details</h2>
+
+            <p className="text-gray-700 mb-2">
+              <strong>Payout ID:</strong> {selected.payout_id}
+            </p>
+            <p className="text-gray-700 mb-2">
+              <strong>Traveler:</strong> {selected.traveler_name}
+            </p>
+            <p className="text-gray-700 mb-2">
+              <strong>Status:</strong> {selected.status}
+            </p>
+            <p className="text-gray-700 mb-2">
+              <strong>Stripe Transfer ID:</strong>{" "}
+              {selected.stripe_transfer_id || "—"}
+            </p>
+            <p className="text-gray-700 mb-4">
+              <strong>Amount:</strong> ${Number(selected.amount).toFixed(2)}
+            </p>
+
+            <h3 className="text-lg font-semibold mb-2">Orders Included</h3>
+            <ul className="list-disc ml-6 text-gray-700">
+              {selected.orders.map((o: any) => (
+                <li key={o.order_id}>
+                  Order #{o.order_id} — ${Number(o.amount).toFixed(2)}
+                </li>
+              ))}
+            </ul>
+
+            <button
+              onClick={() => setSelected(null)}
+              className="mt-6 w-full py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400"
+            >
+              Close
+            </button>
           </div>
         </div>
-      ))}
-    </div>
+      )}
+    </main>
   );
 }
 
-const card = {
-  border: "1px solid #ccc",
-  padding: 20,
-  borderRadius: 8,
-  marginBottom: 20,
-};
-
-const button = {
-  padding: "10px 16px",
-  background: "black",
-  color: "white",
-  borderRadius: 6,
-  border: "none",
-  cursor: "pointer",
-  marginRight: 10,
-};
-
-const buttonRed = {
-  padding: "10px 16px",
-  background: "#b30000",
-  color: "white",
-  borderRadius: 6,
-  border: "none",
-  cursor: "pointer",
-};
 

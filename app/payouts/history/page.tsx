@@ -1,32 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-interface StripeTransfer {
-  transfer_id: string;
-  amount_usd: number;
-  created_at: string;
-}
-
-interface PayoutHistory {
-  stripe_transfers: StripeTransfer[];
-}
-
-export default function PayoutHistoryPage() {
-  const [history, setHistory] = useState<PayoutHistory>({
-    stripe_transfers: [],
-  });
-
+export default function DashboardPayoutsPage() {
+  const router = useRouter();
+  const [payouts, setPayouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Redirect if no token
   useEffect(() => {
-    async function fetchHistory() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+    }
+  }, [router]);
+
+  // Fetch traveler payouts
+  useEffect(() => {
+    async function loadPayouts() {
       try {
         const token = localStorage.getItem("token");
-        if (!token) return;
 
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/payouts/history`,
+          `${process.env.NEXT_PUBLIC_API_URL}/payouts/traveler`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -35,49 +32,69 @@ export default function PayoutHistoryPage() {
         );
 
         const data = await res.json();
-        setHistory({
-          stripe_transfers: data.stripe_transfers || [],
-        });
+        setPayouts(data.payouts || []);
       } catch (err) {
-        console.error("Failed to load payout history:", err);
+        console.error("Payouts load error:", err);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchHistory();
+    loadPayouts();
   }, []);
 
   if (loading) {
-    return <p style={{ padding: 20 }}>Loading payout history...</p>;
+    return (
+      <main className="p-10">
+        <p className="text-gray-600 text-lg">Loading payouts...</p>
+      </main>
+    );
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Payout History</h1>
+    <main className="p-10">
+      <h1 className="text-3xl font-bold text-gray-800 mb-8">
+        Your Payouts
+      </h1>
 
-      <h2>Stripe Transfers</h2>
+      {payouts.length === 0 ? (
+        <p className="text-gray-600">No payouts found.</p>
+      ) : (
+        <div className="space-y-4">
+          {payouts.map((payout) => (
+            <div
+              key={payout.payout_id}
+              className="bg-white p-6 rounded-xl shadow-md"
+            >
+              <h3 className="text-xl font-semibold text-gray-700">
+                Payout #{payout.payout_id}
+              </h3>
 
-      {history.stripe_transfers.length === 0 && (
-        <p>No Stripe payouts yet.</p>
-      )}
+              <p className="text-gray-600 mt-2">
+                Status:{" "}
+                <span className="font-semibold text-emerald-600">
+                  {payout.status}
+                </span>
+              </p>
 
-      {history.stripe_transfers.map((t) => (
-        <div
-          key={t.transfer_id}
-          style={{
-            marginBottom: 12,
-            padding: 12,
-            border: "1px solid #ddd",
-            borderRadius: 8,
-          }}
-        >
-          <strong>${t.amount_usd}</strong>
-          <div>Transfer ID: {t.transfer_id}</div>
-          <div>Date: {t.created_at}</div>
+              <p className="text-gray-600 mt-1">
+                Amount: ${payout.amount?.toFixed(2)}
+              </p>
+
+              <p className="text-gray-600 mt-1">
+                Stripe Transfer ID:{" "}
+                {payout.stripe_transfer_id || "—"}
+              </p>
+
+              <p className="text-gray-600 mt-1">
+                Created: {new Date(payout.created_at).toLocaleString()}
+              </p>
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      )}
+    </main>
   );
 }
+
 

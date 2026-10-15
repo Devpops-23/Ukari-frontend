@@ -1,139 +1,101 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-export default function AdminDisputeDashboard() {
-  const token = "YOUR_ADMIN_TOKEN"; // Replace with real admin token
-
-  const [disputes, setDisputes] = useState([]);
+export default function AdminDisputesPage() {
+  const router = useRouter();
+  const [disputes, setDisputes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  async function fetchDisputes() {
-    setLoading(true);
-
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API}/admin/disputes?token=${token}`
-    );
-
-    const data = await res.json();
-    setDisputes(data.disputes || []);
-    setLoading(false);
-  }
-
+  // Redirect if no token
   useEffect(() => {
-    fetchDisputes();
+    const token = localStorage.getItem("token");
+    if (!token) router.push("/login");
+  }, [router]);
+
+  // Fetch all disputes
+  useEffect(() => {
+    async function loadDisputes() {
+      try {
+        const token = localStorage.getItem("token");
+
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/admin/disputes`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const data = await res.json();
+        setDisputes(data.disputes || []);
+      } catch (err) {
+        console.error("Admin disputes load error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDisputes();
   }, []);
 
-  async function resolveDispute(orderId: number, action: "traveler" | "buyer") {
-    const endpoint =
-      action === "traveler"
-        ? `/admin/disputes/${orderId}/resolve-traveler`
-        : `/admin/disputes/${orderId}/refund-buyer`;
-
-    await fetch(`${process.env.NEXT_PUBLIC_API}${endpoint}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-
-    fetchDisputes();
-  }
-
   if (loading) {
-    return <div style={{ padding: 20 }}>Loading disputes...</div>;
+    return (
+      <main className="p-10">
+        <p className="text-gray-600 text-lg">Loading disputes...</p>
+      </main>
+    );
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Admin Dispute Dashboard</h1>
+    <main className="p-10">
+      <h1 className="text-3xl font-bold text-gray-800 mb-8">
+        Dispute Center
+      </h1>
 
-      {disputes.length === 0 && <p>No active disputes.</p>}
-
-      {disputes.map((d: any) => (
-        <div key={d.order_id} style={card}>
-          <h3>Order #{d.order_id}</h3>
-
-          <p><strong>Buyer:</strong> {d.buyer_name}</p>
-          <p><strong>Traveler:</strong> {d.traveler_name}</p>
-          <p><strong>Reason:</strong> {d.reason}</p>
-          <p><strong>Status:</strong> {d.status}</p>
-
-          {d.stripe_dispute_id && (
-            <p><strong>Stripe Dispute ID:</strong> {d.stripe_dispute_id}</p>
-          )}
-
-          <p><strong>Buyer Comment:</strong> {d.buyer_comment || "None"}</p>
-
-          {/* Delivery Photo */}
-          {d.delivery_photo_url && (
-            <div style={{ marginTop: 10 }}>
-              <strong>Delivery Photo:</strong>
-              <br />
-              <img
-                src={d.delivery_photo_url}
-                alt="Delivery Proof"
-                style={{ width: 200, marginTop: 8, borderRadius: 6 }}
-              />
-            </div>
-          )}
-
-          {/* Evidence Logs */}
-          {d.evidence_logs && d.evidence_logs.length > 0 && (
-            <div style={{ marginTop: 10 }}>
-              <strong>Evidence Logs:</strong>
-              <ul>
-                {d.evidence_logs.map((log: string, idx: number) => (
-                  <li key={idx}>{log}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div style={{ marginTop: 20 }}>
-            <button
-              style={button}
-              onClick={() => resolveDispute(d.order_id, "traveler")}
+      {disputes.length === 0 ? (
+        <p className="text-gray-600">No disputes found.</p>
+      ) : (
+        <div className="space-y-4">
+          {disputes.map((d) => (
+            <div
+              key={d.dispute_id}
+              className="bg-white p-6 rounded-xl shadow-md border border-gray-200"
             >
-              Resolve for Traveler
-            </button>
+              <h3 className="text-xl font-semibold text-gray-800">
+                Dispute #{d.dispute_id}
+              </h3>
 
-            <button
-              style={buttonRed}
-              onClick={() => resolveDispute(d.order_id, "buyer")}
-            >
-              Refund Buyer
-            </button>
-          </div>
+              <p className="text-gray-600 mt-2">
+                Order ID: {d.order_id}
+              </p>
+
+              <p className="text-gray-600 mt-1">
+                Buyer Reason: {d.dispute_reason}
+              </p>
+
+              <p className="text-gray-600 mt-1">
+                Status:{" "}
+                <span className="font-semibold text-emerald-600">
+                  {d.status}
+                </span>
+              </p>
+
+              <a
+                href={`/admin/disputes/${d.dispute_id}`}
+                className="inline-block mt-4 bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900"
+              >
+                Review Dispute
+              </a>
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      )}
+    </main>
   );
 }
 
-const card = {
-  border: "1px solid #ccc",
-  padding: 20,
-  borderRadius: 8,
-  marginBottom: 20,
-};
 
-const button = {
-  padding: "10px 16px",
-  background: "black",
-  color: "white",
-  borderRadius: 6,
-  border: "none",
-  cursor: "pointer",
-  marginRight: 10,
-};
-
-const buttonRed = {
-  padding: "10px 16px",
-  background: "#b30000",
-  color: "white",
-  borderRadius: 6,
-  border: "none",
-  cursor: "pointer",
-};
 

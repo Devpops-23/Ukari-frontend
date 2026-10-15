@@ -1,5 +1,6 @@
 "use client";
 
+import router from "next/router";
 import { useState } from "react";
 
 export default function LoginPage() {
@@ -31,7 +32,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       // Save token
-      localStorage.setItem("access_token", data.access_token);
+      localStorage.setItem("token", data.access_token);
 
       // Redirect
       window.location.href = "/dashboard";
@@ -42,8 +43,6 @@ export default function LoginPage() {
       setLoading(false);
     }
   }
-
-  console.log("ENV:", process.env.NEXT_PUBLIC_API_BASE_URL);
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 px-6">
@@ -101,5 +100,49 @@ export default function LoginPage() {
   );
 }
 
+async function handleLogin(e: React.FormEvent) {
+  e.preventDefault();
 
+  setLoading(true);
+  setError("");
+
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/login`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.detail || "Login failed");
+      setLoading(false);
+      return;
+    }
+
+    // Save token + user info
+    localStorage.setItem("token", data.access_token);
+    localStorage.setItem("user", JSON.stringify(data));
+
+    router.push("/dashboard");
+  } catch {
+    setError("Network error");
+  } finally {
+    setLoading(false);
+  }
+}
+
+
+
+function setError(arg0: string) {
+  throw new Error("Function not implemented.");
+}
+
+function setLoading(arg0: boolean) {
+  throw new Error("Function not implemented.");
+}
 

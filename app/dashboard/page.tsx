@@ -1,37 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-function DashboardCard({
-  title,
-  amount,
-}: {
-  title: string;
-  amount: number | string | null | undefined;
-}) {
-  const safeAmount = Number(amount || 0);
-
-  return (
-    <div className="bg-white p-6 rounded-xl shadow-md">
-      <h3 className="text-lg font-semibold text-gray-700">{title}</h3>
-      <p className="text-3xl font-bold text-emerald-600 mt-2">
-        ${safeAmount.toFixed(2)}
-      </p>
-    </div>
-  );
-}
-
-export default function DashboardHome() {
+export default function DashboardTripsPage() {
+  const router = useRouter();
+  const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<any>(null);
 
+  // Redirect if no token
   useEffect(() => {
-    async function fetchSummary() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+    }
+  }, [router]);
+
+  // Fetch traveler trips
+  useEffect(() => {
+    async function loadTrips() {
       try {
-        const token = localStorage.getItem("access_token");
+        const token = localStorage.getItem("token");
 
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/earnings/summary`,
+          `${process.env.NEXT_PUBLIC_API_URL}/trips/traveler`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -40,48 +32,75 @@ export default function DashboardHome() {
         );
 
         const data = await res.json();
-        setSummary(data);
+        setTrips(data.trips || []);
       } catch (err) {
-        console.error("Dashboard load error:", err);
+        console.error("Trips load error:", err);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchSummary();
+    loadTrips();
   }, []);
 
   if (loading) {
     return (
       <main className="p-10">
-        <p className="text-gray-600 text-lg">Loading dashboard...</p>
+        <p className="text-gray-600 text-lg">Loading trips...</p>
       </main>
     );
   }
 
   return (
     <main className="p-10">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">Dashboard</h1>
+      <h1 className="text-3xl font-bold text-gray-800 mb-8">
+        Your Trips
+      </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <DashboardCard
-          title="Total Earnings"
-          amount={summary?.total_earnings}
-        />
-        <DashboardCard
-          title="Pending Payouts"
-          amount={summary?.pending_payouts}
-        />
-        <DashboardCard
-          title="Completed Trips"
-          amount={summary?.completed_trips}
-        />
-      </div>
+      {trips.length === 0 ? (
+        <p className="text-gray-600">No trips found.</p>
+      ) : (
+        <div className="space-y-4">
+          {trips.map((trip) => (
+            <div
+              key={trip.trip_id}
+              className="bg-white p-6 rounded-xl shadow-md"
+            >
+              <h3 className="text-xl font-semibold text-gray-700">
+                Trip #{trip.trip_id}
+              </h3>
+
+              <p className="text-gray-600 mt-2">
+                From:{" "}
+                <span className="font-semibold text-emerald-600">
+                  {trip.origin_city}
+                </span>
+              </p>
+
+              <p className="text-gray-600 mt-1">
+                To:{" "}
+                <span className="font-semibold text-emerald-600">
+                  {trip.destination_city}
+                </span>
+              </p>
+
+              <p className="text-gray-600 mt-1">
+                Departure: {new Date(trip.departure_date).toLocaleString()}
+              </p>
+
+              <p className="text-gray-600 mt-1">
+                Status:{" "}
+                <span className="font-semibold text-emerald-600">
+                  {trip.status}
+                </span>
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </main>
   );
 }
-
-
 
 
 

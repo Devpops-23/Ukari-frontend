@@ -1,109 +1,101 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function CreateOrder() {
+export default function BuyerOrdersPage() {
   const router = useRouter();
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const token = "YOUR_BUYER_TOKEN"; // Replace with real token
+  // Redirect if no token
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+    }
+  }, [router]);
 
-  const [itemName, setItemName] = useState("");
-  const [storeName, setStoreName] = useState("");
-  const [amount, setAmount] = useState("");
-  const [deliveryLocation, setDeliveryLocation] = useState("");
-  const [notes, setNotes] = useState("");
+  // Fetch buyer orders
+  useEffect(() => {
+    async function loadOrders() {
+      try {
+        const token = localStorage.getItem("token");
 
-  async function submitOrder(e: any) {
-    e.preventDefault();
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/orders/buyer`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API}/buyer/orders/create`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          item_name: itemName,
-          store_name: storeName,
-          amount,
-          delivery_location: deliveryLocation,
-          buyer_notes: notes,
-        }),
+        const data = await res.json();
+        setOrders(data.orders || []);
+      } catch (err) {
+        console.error("Buyer orders load error:", err);
+      } finally {
+        setLoading(false);
       }
-    );
-
-    if (!res.ok) {
-      alert("Failed to create order");
-      return;
     }
 
-    const data = await res.json();
-    router.push(`/buyer/orders/${data.order_id}`);
+    loadOrders();
+  }, []);
+
+  if (loading) {
+    return (
+      <main className="p-10">
+        <p className="text-gray-600 text-lg">Loading your orders...</p>
+      </main>
+    );
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Create New Order</h1>
+    <main className="p-10">
+      <h1 className="text-3xl font-bold text-gray-800 mb-8">
+        Your Orders
+      </h1>
 
-      <form onSubmit={submitOrder} style={{ marginTop: 20 }}>
-        <input
-          placeholder="Item Name"
-          value={itemName}
-          onChange={(e) => setItemName(e.target.value)}
-          style={inputStyle}
-        />
+      {orders.length === 0 ? (
+        <p className="text-gray-600">You have no orders yet.</p>
+      ) : (
+        <div className="space-y-4">
+          {orders.map((order) => (
+            <div
+              key={order.order_id}
+              className="bg-white p-6 rounded-xl shadow-md"
+            >
+              <h3 className="text-xl font-semibold text-gray-700">
+                Order #{order.order_id}
+              </h3>
 
-        <input
-          placeholder="Store Name"
-          value={storeName}
-          onChange={(e) => setStoreName(e.target.value)}
-          style={inputStyle}
-        />
+              <p className="text-gray-600 mt-2">
+                Status:{" "}
+                <span className="font-semibold text-emerald-600">
+                  {order.status}
+                </span>
+              </p>
 
-        <input
-          placeholder="Amount"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          style={inputStyle}
-        />
+              <p className="text-gray-600 mt-1">
+                Amount: ${Number(order.amount || 0).toFixed(2)}
+              </p>
 
-        <input
-          placeholder="Delivery Location"
-          value={deliveryLocation}
-          onChange={(e) => setDeliveryLocation(e.target.value)}
-          style={inputStyle}
-        />
+              <p className="text-gray-600 mt-1">
+                Store: {order.store_name || "Unknown Store"}
+              </p>
 
-        <textarea
-          placeholder="Notes (optional)"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          style={{ ...inputStyle, height: 80 }}
-        />
-
-        <button type="submit" style={buttonStyle}>
-          Submit Order
-        </button>
-      </form>
-    </div>
+              <p className="text-gray-600 mt-1">
+                Created:{" "}
+                {order.created_at
+                  ? new Date(order.created_at).toLocaleString()
+                  : "—"}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </main>
   );
 }
 
-const inputStyle = {
-  display: "block",
-  width: "100%",
-  padding: 12,
-  marginBottom: 12,
-  borderRadius: 6,
-  border: "1px solid #ccc",
-};
-
-const buttonStyle = {
-  padding: "12px 20px",
-  background: "black",
-  color: "white",
-  borderRadius: 6,
-  border: "none",
-  cursor: "pointer",
-};

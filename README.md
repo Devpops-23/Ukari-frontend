@@ -15,7 +15,8 @@ bun dev
 ```
 
 const base = process.env.NEXT_PUBLIC_API_BASE_URL;
-fetch(`${base}/auth/login`, ...)
+fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`)
+
 
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.

@@ -1,51 +1,60 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-export default function Home() {
-  const router = useRouter();
+export default function Page() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [result, setResult] = useState("");
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-
-    // 1. Not logged in → login
-    if (!token) {
-      router.replace("/login");
-      return;
-    }
-
-    // 2. Logged in → check onboarding status
-    async function checkStatus() {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/stripe/connect/account-status`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        const data = await res.json();
-
-        // Not onboarded → go to onboarding
-        if (!data.charges_enabled || !data.payouts_enabled) {
-          router.replace("/traveler/onboarding");
-          return;
+  const handleLogin = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
         }
+      );
 
-        // Fully onboarded → dashboard
-        router.replace("/dashboard");
-      } catch (err) {
-        router.replace("/login");
-      }
+      const data = await res.json();
+      setResult(JSON.stringify(data, null, 2));
+    } catch (err) {
+      setResult("Error connecting to API");
     }
+  };
 
-    checkStatus();
-  }, []);
+  return (
+    <div style={{ padding: "2rem" }}>
+      <h1>Login Test</h1>
 
-  return null;
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        style={{ display: "block", marginBottom: "1rem" }}
+      />
+
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        style={{ display: "block", marginBottom: "1rem" }}
+      />
+
+      <button onClick={handleLogin}>Login</button>
+
+      <pre style={{ marginTop: "2rem", background: "#eee", padding: "1rem" }}>
+        {result}
+      </pre>
+    </div>
+  );
 }
+
 
 

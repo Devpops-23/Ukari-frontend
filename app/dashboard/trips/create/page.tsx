@@ -1,107 +1,114 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function CreateOrderPage() {
+export default function CreateTripPage() {
   const router = useRouter();
 
-  const [item, setItem] = useState("");
-  const [store, setStore] = useState("");
-  const [pickup, setPickup] = useState("");
-  const [delivery, setDelivery] = useState("");
-  const [reward, setReward] = useState(20);
+  const [originCity, setOriginCity] = useState("");
+  const [destinationCity, setDestinationCity] = useState("");
+  const [departureDate, setDepartureDate] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (!token) router.push("/login");
-  }, [router]);
-
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleCreateTrip(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
 
-    // Backend integration will go here later
-    console.log("Order created:", { item, store, pickup, delivery, reward });
+    try {
+      const token = localStorage.getItem("token");
 
-    setLoading(false);
-    router.push("/dashboard/orders");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/trips/create`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            origin_city: originCity,
+            destination_city: destinationCity,
+            departure_date: departureDate,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (res.ok) {
+        router.push("/dashboard/trips");
+      } else {
+        alert(data.error || "Unable to create trip");
+      }
+    } catch (err) {
+      alert("Error connecting to API");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div className="p-8 max-w-xl mx-auto">
-      <h1 className="text-3xl font-semibold text-gray-800 mb-6">Create Order</h1>
+    <main className="p-10">
+      <h1 className="text-3xl font-bold text-gray-800 mb-8">
+        Create a New Trip
+      </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-5 bg-white p-6 rounded-xl shadow">
+      <form
+        onSubmit={handleCreateTrip}
+        className="bg-white p-6 rounded-xl shadow-md max-w-lg space-y-6"
+      >
         <div>
-          <label className="block text-gray-700 mb-1">Item Name</label>
+          <label className="block text-gray-700 font-medium mb-2">
+            Origin City
+          </label>
           <input
             type="text"
+            value={originCity}
+            onChange={(e) => setOriginCity(e.target.value)}
+            className="w-full border rounded-lg p-3"
+            placeholder="Example: Houston"
             required
-            value={item}
-            onChange={(e) => setItem(e.target.value)}
-            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-            placeholder="iPhone 15 Pro"
           />
         </div>
 
         <div>
-          <label className="block text-gray-700 mb-1">Store</label>
+          <label className="block text-gray-700 font-medium mb-2">
+            Destination City
+          </label>
           <input
             type="text"
+            value={destinationCity}
+            onChange={(e) => setDestinationCity(e.target.value)}
+            className="w-full border rounded-lg p-3"
+            placeholder="Example: Lagos"
             required
-            value={store}
-            onChange={(e) => setStore(e.target.value)}
-            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-            placeholder="Apple Store, Houston"
           />
         </div>
 
         <div>
-          <label className="block text-gray-700 mb-1">Pickup Location</label>
+          <label className="block text-gray-700 font-medium mb-2">
+            Departure Date
+          </label>
           <input
-            type="text"
+            type="datetime-local"
+            value={departureDate}
+            onChange={(e) => setDepartureDate(e.target.value)}
+            className="w-full border rounded-lg p-3"
             required
-            value={pickup}
-            onChange={(e) => setPickup(e.target.value)}
-            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-            placeholder="Houston, TX"
-          />
-        </div>
-
-        <div>
-          <label className="block text-gray-700 mb-1">Delivery Location</label>
-          <input
-            type="text"
-            required
-            value={delivery}
-            onChange={(e) => setDelivery(e.target.value)}
-            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-            placeholder="Lagos, Nigeria"
-          />
-        </div>
-
-        <div>
-          <label className="block text-gray-700 mb-1">Reward ($)</label>
-          <input
-            type="number"
-            min={1}
-            value={reward}
-            onChange={(e) => setReward(Number(e.target.value))}
-            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
           />
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition disabled:opacity-50"
+          className="bg-emerald-600 text-white px-4 py-2 rounded-lg w-full"
         >
-          {loading ? "Creating..." : "Create Order"}
+          {loading ? "Creating Trip..." : "Create Trip"}
         </button>
       </form>
-    </div>
+    </main>
   );
 }
+
 
