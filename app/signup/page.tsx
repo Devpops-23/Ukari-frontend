@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialRole = searchParams.get("role") === "buyer" ? "buyer" : "traveler";
@@ -43,7 +43,6 @@ export default function SignupPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        // Handle FastAPI validation error arrays or error string
         if (Array.isArray(data.detail)) {
           const messages = data.detail.map((d: any) => d.msg || `${d.loc?.join(".")}: invalid`).join(", ");
           throw new Error(messages || "Invalid signup parameters");
@@ -51,7 +50,7 @@ export default function SignupPage() {
         throw new Error(data.detail || "Signup failed. Please try again.");
       }
 
-      // Now auto-login to obtain access token
+      // Auto-login to obtain access token
       const loginRes = await fetch(`${apiBase}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -60,7 +59,6 @@ export default function SignupPage() {
 
       if (loginRes.ok) {
         const loginData = await loginRes.json();
-        // Save both token keys to maintain universal compatibility across all routes
         localStorage.setItem("token", loginData.access_token);
         localStorage.setItem("access_token", loginData.access_token);
         localStorage.setItem("user", JSON.stringify(loginData));
@@ -71,7 +69,6 @@ export default function SignupPage() {
           window.location.href = "/dashboard";
         }
       } else {
-        // If auto-login fails, redirect to login page
         router.push("/login?signup=success");
       }
     } catch (err: any) {
@@ -206,5 +203,19 @@ export default function SignupPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 text-sm">
+          Loading signup...
+        </div>
+      }
+    >
+      <SignupForm />
+    </Suspense>
   );
 }
