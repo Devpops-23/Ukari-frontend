@@ -1,6 +1,5 @@
 "use client";
 
-import router from "next/router";
 import { useState } from "react";
 
 export default function LoginPage() {
@@ -98,51 +97,5 @@ export default function LoginPage() {
       </div>
     </main>
   );
-}
-
-async function handleLogin(e: React.FormEvent) {
-  e.preventDefault();
-
-  setLoading(true);
-  setError("");
-
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/login`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      }
-    );
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      setError(data.detail || "Login failed");
-      setLoading(false);
-      return;
-    }
-
-    // Save token + user info
-    localStorage.setItem("token", data.access_token);
-    localStorage.setItem("user", JSON.stringify(data));
-
-    router.push("/dashboard");
-  } catch {
-    setError("Network error");
-  } finally {
-    setLoading(false);
-  }
-}
-
-
-
-function setError(arg0: string) {
-  throw new Error("Function not implemented.");
-}
-
-function setLoading(arg0: boolean) {
-  throw new Error("Function not implemented.");
 }
 
