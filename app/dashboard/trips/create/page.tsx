@@ -13,11 +13,19 @@ export default function CreateTripPage() {
   const [maxWeight, setMaxWeight] = useState("20");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token") || localStorage.getItem("access_token");
     if (!token) {
       router.push("/login");
+      return;
+    }
+    const saved = localStorage.getItem("user");
+    if (saved) {
+      try {
+        setCurrentUser(JSON.parse(saved));
+      } catch {}
     }
   }, [router]);
 
@@ -75,6 +83,14 @@ export default function CreateTripPage() {
         return;
       }
 
+      if (res.status === 403) {
+        setError(
+          data.detail ||
+            "Only travelers can create trips (your current role is 'buyer'). Switch to traveler to continue."
+        );
+        return;
+      }
+
       if (Array.isArray(data.detail)) {
         const msg = data.detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ");
         setError(msg || "Validation error creating trip");
@@ -87,6 +103,8 @@ export default function CreateTripPage() {
       setLoading(false);
     }
   }
+
+  const isBuyer = currentUser?.role === "buyer";
 
   return (
     <main className="p-6 md:p-10 max-w-3xl">
@@ -109,6 +127,32 @@ export default function CreateTripPage() {
       </div>
 
       <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 max-w-xl">
+        {/* Buyer Notice Banner */}
+        {isBuyer && (
+          <div className="mb-6 p-4 bg-sky-50 border border-sky-100 rounded-xl text-slate-800 text-sm">
+            <div className="flex items-start gap-2.5">
+              <span className="text-base mt-0.5">ℹ️</span>
+              <div className="flex-1">
+                <p className="font-semibold text-slate-900">
+                  Buyer Account Active
+                </p>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  You are currently signed in as a Buyer ({currentUser?.email || ""}). Trip creation is reserved for registered Travelers.
+                </p>
+                <div className="mt-2.5">
+                  <Link
+                    href="/buyer/orders"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition"
+                  >
+                    <span>View Buyer Orders</span>
+                    <span>→</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start gap-3">
             <span className="text-lg">⚠️</span>
@@ -126,7 +170,7 @@ export default function CreateTripPage() {
               value={originCity}
               onChange={(e) => setOriginCity(e.target.value)}
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition text-sm"
-              placeholder="e.g. Chennai, India"
+              placeholder="e.g. New York, NY"
               required
             />
           </div>
@@ -140,7 +184,7 @@ export default function CreateTripPage() {
               value={destinationCity}
               onChange={(e) => setDestinationCity(e.target.value)}
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition text-sm"
-              placeholder="e.g. Mumbai, India"
+              placeholder="e.g. Los Angeles, CA"
               required
             />
           </div>
