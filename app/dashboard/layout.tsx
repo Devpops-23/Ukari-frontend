@@ -13,7 +13,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const token = localStorage.getItem("access_token") || localStorage.getItem("token");
     if (!token) {
       router.push("/login");
+      return;
     }
+
+    const verifySession = async () => {
+      try {
+        const apiBase =
+          process.env.NEXT_PUBLIC_API_URL ||
+          process.env.NEXT_PUBLIC_API_BASE_URL ||
+          "http://localhost:8000";
+        const res = await fetch(`${apiBase}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (res.status === 401) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("user");
+          router.push("/login?expired=true");
+        }
+      } catch (err) {
+        // Network drop or backend temporarily restarting: don't kick user out immediately
+      }
+    };
+
+    verifySession();
   }, [router]);
 
   const navLinks = [

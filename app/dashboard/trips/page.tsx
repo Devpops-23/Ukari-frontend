@@ -10,7 +10,7 @@ export default function DashboardTripsPage() {
 
   // Redirect if no token
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("access_token");
     if (!token) {
       router.push("/login");
     }
@@ -20,16 +20,27 @@ export default function DashboardTripsPage() {
   useEffect(() => {
     async function loadTrips() {
       try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+        if (!token) return;
 
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/traveler/trips`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const apiBase =
+          process.env.NEXT_PUBLIC_API_URL ||
+          process.env.NEXT_PUBLIC_API_BASE_URL ||
+          "http://localhost:8000";
+
+        const res = await fetch(`${apiBase}/traveler/trips`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (res.status === 401) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("user");
+          router.push("/login?expired=true");
+          return;
+        }
 
         const data = await res.json();
         setTrips(data.trips || []);
@@ -41,7 +52,7 @@ export default function DashboardTripsPage() {
     }
 
     loadTrips();
-  }, []);
+  }, [router]);
 
   if (loading) {
     return (

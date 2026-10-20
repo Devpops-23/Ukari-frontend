@@ -105,7 +105,7 @@ export default function HomePage() {
               </span>
             </h1>
             <p className="mt-6 text-lg sm:text-xl text-gray-600 leading-relaxed">
-              Order items from <strong>Amazon, Walmart, Costco, & Macy&apos;s</strong>. Our platform automatically purchases them via secure Stripe virtual cards and pairs your package with travelers who have extra luggage capacity.
+              Order items from <strong>Amazon and Walmart</strong>. Our platform automatically purchases them via secure Stripe virtual cards and pairs your package with travelers who have extra luggage capacity.
             </p>
 
             {/* CTAs */}
